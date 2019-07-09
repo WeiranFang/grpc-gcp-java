@@ -64,7 +64,7 @@ public class ChecksumRequestMarshaller<ReqT> implements Marshaller<ReqT> {
     byte[] payload = null;
     try {
       payload = IoUtils.toByteArray(stream);
-      // logger.info("original payload bytes: " + printBytes(payload));
+      logger.info("original payload bytes: " + printBytes(payload));
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -76,21 +76,21 @@ public class ChecksumRequestMarshaller<ReqT> implements Marshaller<ReqT> {
     try {
       logger.info("Calculating checksum on payload...");
       // reserve CHECKSUM_OVERHEAD_BYTES bytes for tag+checksum
-      byte[] resultBytes = new byte[CHECKSUM_OVERHEAD_BYTES + payload.length];
+      byte[] resultBytes = new byte[payload.length + CHECKSUM_OVERHEAD_BYTES];
 
       // calculate crc32 checksum for payload
       Checksum checksum = new Crc32c();
       checksum.update(payload, 0, payload.length);
 
-      // prepend tag+checksum to payload bytes.
+      // append tag+checksum to payload bytes.
       CodedOutputStream codedOutputStream =
-          CodedOutputStream.newInstance(resultBytes, 0, CHECKSUM_OVERHEAD_BYTES);
+          CodedOutputStream.newInstance(resultBytes, payload.length, CHECKSUM_OVERHEAD_BYTES);
       codedOutputStream.writeFixed32(CHECKSUM_FIELD_NUMBER, (int) checksum.getValue());
 
       // copy payload bytes to result bytes.
-      System.arraycopy(payload, 0, resultBytes, CHECKSUM_OVERHEAD_BYTES, payload.length);
-      // logger.info("payload bytes after checksum: " + printBytes(resultBytes));
-      logger.info("Checksum overhead prepended to request payload.");
+      System.arraycopy(payload, 0, resultBytes, 0, payload.length);
+      logger.info("payload bytes after checksum: " + printBytes(resultBytes));
+      logger.info("Checksum overhead appended to request payload.");
       return new ByteArrayInputStream(resultBytes);
     } catch (IOException e) {
       // checksum process failed, use original payload pytes.
