@@ -35,6 +35,7 @@ public class Args {
   final boolean autoWindow;
   final boolean verboseLog;
   final boolean verboseResult;
+  final boolean compression;
 
   Args(String[] args) throws ArgumentParserException {
     ArgumentParser parser =
@@ -61,6 +62,7 @@ public class Args {
     parser.addArgument("--auto").type(Boolean.class).setDefault(false);
     parser.addArgument("--verboseLog").type(Boolean.class).setDefault(false);
     parser.addArgument("--verboseResult").type(Boolean.class).setDefault(false);
+    parser.addArgument("--compression").type(Boolean.class).setDefault(false);
 
     Namespace ns = parser.parseArgs(args);
 
@@ -83,5 +85,6 @@ public class Args {
     autoWindow = ns.getBoolean("auto");
     verboseLog = ns.getBoolean("verboseLog");
     verboseResult = ns.getBoolean("verboseResult");
+    compression = ns.getBoolean("compression");
   }
 }

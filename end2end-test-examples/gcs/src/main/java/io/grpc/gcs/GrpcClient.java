@@ -5,6 +5,7 @@ import static io.grpc.gcs.Args.METHOD_READ;
 import static io.grpc.gcs.Args.METHOD_WRITE;
 import static io.grpc.gcs.Args.DEFAULT_HOST;
 
+import com.google.api.MonitoredResource;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -16,6 +17,10 @@ import com.google.google.storage.v1.InsertObjectSpec;
 import com.google.google.storage.v1.Object;
 import com.google.google.storage.v1.ServiceConstants.Values;
 import com.google.google.storage.v1.StorageGrpc;
+import com.google.logging.v2.LogEntry;
+import com.google.logging.v2.LoggingServiceV2Grpc;
+import com.google.logging.v2.WriteLogEntriesRequest;
+import com.google.logging.v2.WriteLogEntriesResponse;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -27,7 +32,6 @@ import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -102,6 +106,9 @@ public class GrpcClient {
     if (args.threads == 1) {
       try {
         switch (args.method) {
+          case "logging":
+            makeLoggingRequest(channel);
+            break;
           case METHOD_READ:
             makeMediaRequest(channel, results);
             break;
@@ -159,6 +166,27 @@ public class GrpcClient {
         }
       }
     }
+  }
+
+  private void makeLoggingRequest(ManagedChannel channel) {
+    LoggingServiceV2Grpc.LoggingServiceV2BlockingStub blockingStub =
+        LoggingServiceV2Grpc.newBlockingStub(channel).withCallCredentials(
+            MoreCallCredentials.from(creds.createScoped(SCOPE)));
+
+    if (args.compression) {
+      blockingStub = blockingStub.withCompression("gzip");
+    }
+
+    LogEntry entry = LogEntry.newBuilder()
+        .setResource(
+            MonitoredResource.newBuilder().setType("global").build())
+        .setLogName("projects/grpc-gcp/logs/porkpie")
+        .setTextPayload("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+        .build();
+    WriteLogEntriesRequest req = WriteLogEntriesRequest.newBuilder().addEntries(entry).build();
+
+    WriteLogEntriesResponse resp = blockingStub.writeLogEntries(req);
+    logger.info("WriteLogEntries Done");
   }
 
   private void makeMediaRequest(ManagedChannel channel, ResultTable results) {
